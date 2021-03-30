@@ -1,5 +1,5 @@
 const express = require('express');
-const parse = require('date-fns/parse');
+const { parse, isValid } = require('date-fns');
 const Datastore = require('nedb');
 const { v4 } = require('uuid');
 const multer = require('multer');
@@ -86,13 +86,21 @@ function createDb(streamer, lines) {
       return;
     }
 
+    let createdDate = parse(result[3], '[dd-MM-yyyy]', new Date());
+    if (!isValid(createdDate)) {
+      createdDate = parse(result[3], '[ddMMyyyy]', new Date());
+    }
+    if (!isValid(createdDate)) {
+      return;
+    }
+
     db.update(
       { _id: '__autoid__' },
       { $inc: { seq: 1 } },
       { upsert: true, returnUpdatedDocs: true }
     );
     db.insert({
-      createdAt: parse(result[3], '[dd-MM-yyyy]', new Date()).toISOString(),
+      createdAt: createdDate.toISOString(),
       creator: streamer,
       originator: 'streamlabs',
       game: result[2].substring(1, result[2].length-1),
