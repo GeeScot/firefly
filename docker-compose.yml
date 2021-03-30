@@ -1,0 +1,9 @@
+version: "3.9"
+
+services:
+  bigdig:
+    container_name: firefly
+    image: codescot/firefly
+    restart: unless-stopped
+    ports:
+      - "5678:3000"

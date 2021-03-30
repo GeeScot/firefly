@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Quote XLSX to NeDB</title>
+    <style>
+      body {
+        text-align: center;
+        font-family: Verdana, Geneva, Tahoma, sans-serif;
+
+        color: white;
+        background-color: #1d1d1d;
+
+        font-size: 16pt;
+      }
+
+      .quotefile {
+        padding: 10px;
+        margin-top: 10px;
+
+        border: 1px solid white;
+        border-radius: 6px;
+
+        box-shadow: 0 0 6px 0 #000000;
+      }
+    </style>
+    <script>
+      async function getNeDB(e) {
+        e.preventDefault();
+
+        const streamer = document.getElementById('streamer').value;
+        const inputFile = document.getElementById('quotelist').files[0];
+
+        const formData = new FormData();
+        formData.append('streamer', streamer);
+        formData.append('quotelist', inputFile);
+
+        const result = await fetch('/api/convert/xlsx', {
+          method: 'POST',
+          body: formData
+        });
+        const metadata = await result.json();
+
+        setTimeout(() => {
+          window.open(`/api/download/${metadata.createdDb}`, '_blank');
+        }, 1500);
+      }
+    </script>
+  </head>
+  <body>
+    <form onsubmit="getNeDB(event)" method="POST">
+      <h2>XLSX to NeDB Migration</h2>
+      <br />
+      <label>Your twitch username</label>
+      <br />
+      <input type="text" id="streamer" name="streamer" placeholder="GeeScot" />
+      <br />
+      <br />
+      <label>Your quotes file (xlsx)</label>
+      <br />
+      <input type="file" id="quotelist" name="quotelist" class="quotefile" />
+      <br />
+      <input type="submit" id="submit" name="submit" value="Convert" />
+    </form>
+  </body>
+</html>

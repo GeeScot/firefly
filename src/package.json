@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "date-fns": "^2.19.0",
+    "express": "^4.17.1",
+    "multer": "^1.4.2",
+    "nedb": "^1.8.0",
+    "node-xlsx": "^0.16.1",
+    "uuid": "^8.3.2"
+  }
+}
