@@ -86,13 +86,21 @@ function createDb(streamer, lines) {
       return;
     }
 
-    let createdDate = parse(result[3], '[dd-MM-yyyy]', new Date());
-    if (!isValid(createdDate)) {
-      createdDate = parse(result[3], '[ddMMyyyy]', new Date());
+    const formats = [
+      '[ddMMyyyy]', 
+      '[dd-MM-yyyy]', 
+      '[dd/MM/yyyy]', 
+      '[dd.MM.yyyy]'
+    ];
+
+    let createdDate = null;
+    for (let i = 0; i < formats.length; i++) {
+      createdDate = parse(result[3], formats[i], new Date());
+      if (isValid(createdDate)) {
+        break;
+      }
     }
-    if (!isValid(createdDate)) {
-      createdDate = parse(result[3], '[dd/MM/yyyy]', new Date());
-    }
+
     if (!isValid(createdDate)) {
       return;
     }
