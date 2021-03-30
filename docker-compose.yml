@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  bigdig:
+  firefly:
     container_name: firefly
     image: codescot/firefly
     restart: unless-stopped
