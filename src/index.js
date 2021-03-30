@@ -91,6 +91,9 @@ function createDb(streamer, lines) {
       createdDate = parse(result[3], '[ddMMyyyy]', new Date());
     }
     if (!isValid(createdDate)) {
+      createdDate = parse(result[3], '[dd/MM/yyyy]', new Date());
+    }
+    if (!isValid(createdDate)) {
       return;
     }
 
