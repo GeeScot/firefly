@@ -1,65 +1,189 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Quote XLSX to NeDB</title>
-    <style>
-      body {
-        text-align: center;
-        font-family: Verdana, Geneva, Tahoma, sans-serif;
 
-        color: white;
-        background-color: #1d1d1d;
+<head>
+  <title>Quote XLSX to NeDB</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Verdana, Geneva, Tahoma, sans-serif;
 
-        font-size: 16pt;
-      }
+      color: white;
+      background-color: #1d1d1d;
 
-      .quotefile {
-        padding: 10px;
-        margin-top: 10px;
+      font-size: 16pt;
+    }
 
-        border: 1px solid white;
-        border-radius: 6px;
+    .container {
+      display: inline-block;
+      width: 500px;
 
-        box-shadow: 0 0 6px 0 #000000;
-      }
-    </style>
-    <script>
-      async function getNeDB(e) {
-        e.preventDefault();
+      padding: 50px;
+      margin: 10px 0;
 
-        const streamer = document.getElementById('streamer').value;
-        const inputFile = document.getElementById('quotelist').files[0];
+      border: 1px solid #ffffff;
+      border-radius: 6px;
 
-        const formData = new FormData();
-        formData.append('streamer', streamer);
-        formData.append('quotelist', inputFile);
+      box-shadow: 0 0 6px 0 #000000;
+    }
 
-        const result = await fetch('/api/convert/xlsx', {
+    .fileupload {
+      padding: 10px;
+      margin-top: 10px;
+
+      border: 1px solid #ffffff;
+      border-radius: 6px;
+
+      box-shadow: 0 0 6px 0 #000000;
+    }
+
+    label {
+      font-size: 14pt;
+    }
+
+    input[type="text"] {
+      width: 300px;
+
+      padding: 10px 5px;
+      margin: 10px 0;
+
+      border: none;
+      border-radius: 6px;
+
+      box-shadow: 0 0 6px 0 #000000;
+
+      text-align: center;
+    }
+
+    textarea:focus,
+    input:focus {
+      outline: none;
+    }
+
+    input[type="button"] {
+      width: 200px;
+
+      padding: 5px 0;
+      margin: 10px 0;
+
+      border: 1px solid #ffffff;
+      border-radius: 6px;
+
+      background-color: #ffffff;
+      color: #242424;
+
+      box-shadow: 0 0 6px 0 #000000;
+    }
+
+    input[type="button"]:hover {
+      cursor: pointer;
+
+      background-color: #242424;
+      color: #ffffff;
+    }
+  </style>
+  <script>
+    async function getQuotesNeDB(e) {
+      e.preventDefault();
+      document.getElementById('quotesbutton').disabled = true;
+
+      const streamer = document.getElementById('streamer').value;
+      const inputFile = document.getElementById('quotelist').files[0];
+
+      const formData = new FormData();
+      formData.append('streamer', streamer);
+      formData.append('quotelist', inputFile);
+
+      try {
+        const result = await fetch('/api/quotes/xlsx', {
           method: 'POST',
           body: formData
         });
         const metadata = await result.json();
 
         setTimeout(() => {
-          window.open(`/api/download/${metadata.createdDb}`, '_blank');
-        }, 1500);
+          window.open(`/api/download/quotes/${metadata.createdDb}`, '_blank');
+        }, 1000);
+      } catch (e) {
+        console.log(e);
+      } finally {
+        document.getElementById('quotesbutton').disabled = false;
       }
-    </script>
-  </head>
-  <body>
-    <form onsubmit="getNeDB(event)" method="POST">
-      <h2>XLSX to NeDB Migration</h2>
-      <br />
+    }
+
+    async function getUsersNeDB(e) {
+      e.preventDefault();
+      document.getElementById('usersbutton').disabled = true;
+
+      const currencyId = document.getElementById('currencyId').value;
+      const inputFile = document.getElementById('userlist').files[0];
+
+      const formData = new FormData();
+      formData.append('currencyId', currencyId);
+      formData.append('userlist', inputFile);
+
+      try {
+        const result = await fetch('/api/users/xlsx', {
+          method: 'POST',
+          body: formData
+        });
+        const metadata = await result.json();
+
+        setTimeout(() => {
+          window.open(`/api/download/users/${metadata.createdDb}`, '_blank');
+        }, 1000);
+      } catch (e) {
+        console.log(e);
+      } finally {
+        document.getElementById('usersbutton').disabled = false;
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <h2>XLSX to NeDB Migration</h2>
+
+  <div class="container">
+    <h4>Quote Migration</h4>
+    <div>
       <label>Your twitch username</label>
       <br />
-      <input type="text" id="streamer" name="streamer" placeholder="GeeScot" />
-      <br />
-      <br />
+      <input 
+        type="text" 
+        id="streamer" 
+        name="streamer" 
+        placeholder="GeeScot" 
+        onblur="this.placeholder = 'GeeScot'"
+        onfocus="this.placeholder = ''" />
+    </div>
+    <div>
       <label>Your quotes file (xlsx)</label>
       <br />
-      <input type="file" id="quotelist" name="quotelist" class="quotefile" />
+      <input type="file" id="quotelist" name="quotelist" class="fileupload" />
+    </div>
+    <input id="quotesbutton" type="button" value="Migrate Quotes" onclick="getQuotesNeDB(event)" />
+  </div>
+  <div class="container">
+    <h4>User Migration</h4>
+    <div>
+      <label>Your currency id</label>
       <br />
-      <input type="submit" id="submit" name="submit" value="Convert" />
-    </form>
-  </body>
+      <input 
+        type="text" 
+        id="currencyId" 
+        name="currencyId" 
+        placeholder="00000000-0000-0000-0000-000000000000"
+        onblur="this.placeholder = '00000000-0000-0000-0000-000000000000'"
+        onfocus="this.placeholder = ''" />
+    </div>
+    <div>
+      <label>Your users/points file (xlsx)</label>
+      <br />
+      <input type="file" id="userlist" name="userlist" class="fileupload" />
+    </div>
+    <input id="usersbutton" type="button" value="Migrate Users" onclick="getUsersNeDB(event)" />
+  </div>
+</body>
+
 </html>

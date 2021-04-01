@@ -4,6 +4,7 @@ const Datastore = require('nedb');
 const { v4 } = require('uuid');
 const multer = require('multer');
 const xlsx = require('node-xlsx').default;
+const axios = require('axios');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -15,22 +16,13 @@ app.use(express.text());
 app.use(express.json());
 app.use(express.static('public'));
 
-app.get('/api/download/:targetDb', async (req, res) => {
-  res.download(`temp/${req.params['targetDb']}.db`, 'quotes.db');
+app.get('/api/download/:outputName/:targetDb', async (req, res) => {
+  const outputName = req.params['outputName'];
+  const targetDb = req.params['targetDb'];
+  res.download(`temp/${targetDb}.db`, `${outputName}.db`);
 });
 
-app.post('/api/convert/csv', upload.single('quotelist'), (req, res) => {
-  const streamer = req.body.streamer;
-  const fileContents = req.file.buffer.toString();
-  const lines = fileContents.split('\n');
-
-  const tempDb = createDb(streamer, lines);
-  res.json({
-    createdDb: tempDb
-  });
-});
-
-app.post('/api/convert/xlsx', upload.single('quotelist'), (req, res) => {
+app.post('/api/quotes/xlsx', upload.single('quotelist'), (req, res) => {
   const streamer = req.body.streamer;
   const worksheets = xlsx.parse(req.file.buffer);
 
@@ -38,17 +30,24 @@ app.post('/api/convert/xlsx', upload.single('quotelist'), (req, res) => {
     return `${line[0]},${line[1]}`;
   });
 
-  const tempDb = createDb(streamer, lines.slice(1, lines.length));
-  res.json({
-    createdDb: tempDb
-  });
+  const result = createQuotesDb(streamer, lines.slice(1, lines.length));
+  res.json(result);
+});
+
+app.post('/api/users/xlsx', upload.single('userlist'), async (req, res) => {
+  const currencyId = req.body.currencyId;
+  const worksheets = xlsx.parse(req.file.buffer);
+  const rows = worksheets[0].data;
+
+  const result = await createUsersDb(currencyId, rows.slice(1, rows.length));
+  res.json(result);
 });
 
 app.listen(port, () => {
   console.log(`listening at http://localhost:${port}`);
 });
 
-function createDb(streamer, lines) {
+function createQuotesDb(streamer, lines) {
   const tempDb = v4();
   const db = new Datastore({ filename: `temp/${tempDb}.db` });
   db.loadDatabase(err => {
@@ -122,5 +121,112 @@ function createDb(streamer, lines) {
 
   db.persistence.compactDatafile();
 
-  return tempDb;
+  const result = {
+    createdDb: tempDb,
+    totalQuotes: lines.length
+  };
+
+  console.log(result);
+
+  return result;
+}
+
+async function createUsersDb(currencyId, rows) {
+  const tempDb = v4();
+  const db = new Datastore({ filename: `temp/${tempDb}.db` });
+  db.loadDatabase(err => {
+    if (err) {
+      console.log(err);
+    }
+  });
+
+  const chunkSize = 100;
+  const allUsers = rows.map(row => row[0]);
+  let twitchUsers = [];
+
+  for (let i = 0; i < allUsers.length; i += chunkSize) {
+    let nextChunk = i + chunkSize;
+    if (nextChunk > allUsers.length) {
+      nextChunk = allUsers.length;
+    }
+
+    const batchUsers = allUsers.slice(i, nextChunk);
+    const users = await getTwitchUsers(batchUsers);
+    twitchUsers = twitchUsers.concat(users);
+  }
+
+  const inactiveUsers = [];
+
+  rows.forEach((row) => {
+    const username = row[0];
+    const points = row[2];
+    const hours = row[3];
+
+    const twitchUser = twitchUsers.find((user) => user?.login === username.toLowerCase());
+    if (!twitchUser) {
+      inactiveUsers.push(username);
+      return;
+    }
+
+    db.insert({
+      _id: twitchUser.id,
+      username: username.toLowerCase(),
+      displayName: username,
+      profilePicUrl: twitchUser.profile_image_url,
+      twitch: true,
+      twitchRoles: [],
+      online: false,
+      onlineAt: 1617199157240,
+      lastSeen: 1617199157240,
+      joinDate: 1617199157240,
+      minutesInChannel: hours * 60,
+      chatMessages: 0,
+      disableAutoStatAccrual: false,
+      disableActiveUserList: false,
+      metadata: {},
+      currency: {
+        [currencyId]: points
+      }
+    });
+  });
+
+  db.persistence.compactDatafile();
+
+  const result = {
+    createdDb: tempDb,
+    totalUsersCount: allUsers.length,
+    activeUsersCount: twitchUsers.length,
+    inactiveUsers: inactiveUsers.sort()
+  };
+
+  console.log({
+    createdDb: result.createdDb,
+    totalUsersCount: result.totalUsersCount,
+    activeUsersCount: result.activeUsersCount
+  });
+
+  return result;
+}
+
+async function getTwitchUsers(channels) {
+  try {
+    const params = channels.map(c => `login=${c}`);
+    const targetUrl = `https://api.twitch.tv/helix/users?${params.join('&')}`;
+    return await getFromTwitch(targetUrl);
+  } catch (e) {
+    console.log(e);
+  }
+
+  return null;
+}
+
+async function getFromTwitch(targetUrl) {
+  const { data } = await axios.get(targetUrl, {
+    headers: {
+      'Client-Id': 'tvb338tedqmpgtqb557nmhxye5542b',
+      'Authorization': 'Bearer yt86by5dooec2h92717owau2a9exfh'
+    }
+  });
+
+  return data.data;
 }
