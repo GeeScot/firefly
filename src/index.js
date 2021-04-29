@@ -223,8 +223,8 @@ async function getTwitchUsers(channels) {
 async function getFromTwitch(targetUrl) {
   const { data } = await axios.get(targetUrl, {
     headers: {
-      'Client-Id': 'tvb338tedqmpgtqb557nmhxye5542b',
-      'Authorization': 'Bearer yt86by5dooec2h92717owau2a9exfh'
+      'Client-Id': 'twitch-client-id',
+      'Authorization': 'Bearer twitch-auth-token'
     }
   });
 
