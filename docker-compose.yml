@@ -7,3 +7,5 @@ services:
     restart: unless-stopped
     ports:
       - "5678:3000"
+    env_file: 
+      - firefly.env

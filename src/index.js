@@ -1,3 +1,6 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const { parse, isValid } = require('date-fns');
 const Datastore = require('nedb');
@@ -221,12 +224,24 @@ async function getTwitchUsers(channels) {
 }
 
 async function getFromTwitch(targetUrl) {
+  const token = await getTwitchToken();
   const { data } = await axios.get(targetUrl, {
     headers: {
-      'Client-Id': 'tvb338tedqmpgtqb557nmhxye5542b',
-      'Authorization': 'Bearer yt86by5dooec2h92717owau2a9exfh'
+      'Client-Id': `${process.env.TWITCH_CLIENT_ID}`,
+      'Authorization': `Bearer ${token}`
     }
   });
 
   return data.data;
+}
+
+async function getTwitchToken() {
+  const targetUrl = `https://id.twitch.tv/oauth2/token`;
+  const { data } = await axios.post(targetUrl, {
+    'client_id': process.env.TWITCH_CLIENT_ID,
+    'cient_secret': process.env.TWITCH_CLIENT_SECRET,
+    'grant_type': 'client_credentials'
+  });
+
+  return data.access_token;
 }
