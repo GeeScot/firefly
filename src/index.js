@@ -26,11 +26,7 @@ app.post('/api/quotes/xlsx', upload.single('quotelist'), (req, res) => {
   const streamer = req.body.streamer;
   const worksheets = xlsx.parse(req.file.buffer);
 
-  const lines = worksheets[0].data.map((line) => {
-    return `${line[0]},${line[1]}`;
-  });
-
-  const result = createQuotesDb(streamer, lines.slice(1, lines.length));
+  const result = createQuotesDb(streamer, worksheets[0].data);
   res.json(result);
 });
 
@@ -62,44 +58,13 @@ function createQuotesDb(streamer, lines) {
   });
 
   lines.forEach((line) => {
-    const firstComma = line.indexOf(',');
-    const id = line.substring(0, firstComma);
-    const text = line.substring(firstComma+1, line.length);
+    const id = line[0];
+    const text = line[1];
+    const author = line[2];
+    const game = line[3];
+    const date = line[4];
 
-    const tokenizer = /^(.*)(\[.*\]).*(\[.*\])/g;
-    const result = tokenizer.exec(text);
-    if (result === null) {
-      db.update(
-        { _id: '__autoid__' },
-        { $inc: { seq: 1 } },
-        { upsert: true, returnUpdatedDocs: true }
-      );
-      db.insert({
-        createdAt: '',
-        creator: streamer,
-        originator: 'streamlabs',
-        game: '',
-        text: text.trim(),
-        _id: parseInt(id)+1
-      });
-      return;
-    }
-
-    const formats = [
-      '[ddMMyyyy]', 
-      '[dd-MM-yyyy]', 
-      '[dd/MM/yyyy]', 
-      '[dd.MM.yyyy]'
-    ];
-
-    let createdDate = null;
-    for (let i = 0; i < formats.length; i++) {
-      createdDate = parse(result[3], formats[i], new Date());
-      if (isValid(createdDate)) {
-        break;
-      }
-    }
-
+    const createdDate = parse(date, 'MM/dd/yyyy hh:mm a', new Date());
     if (!isValid(createdDate)) {
       return;
     }
@@ -112,9 +77,9 @@ function createQuotesDb(streamer, lines) {
     db.insert({
       createdAt: createdDate.toISOString(),
       creator: streamer,
-      originator: 'streamlabs',
-      game: result[2].substring(1, result[2].length-1),
-      text: result[1].trim(),
+      originator: author,
+      game: game,
+      text: text.trim(),
       _id: parseInt(id)+1
     });
   });
