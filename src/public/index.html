@@ -2,187 +2,99 @@
 <html>
 
 <head>
-  <title>Quote XLSX to NeDB</title>
-  <style>
-    body {
-      text-align: center;
-      font-family: Verdana, Geneva, Tahoma, sans-serif;
-
-      color: white;
-      background-color: #1d1d1d;
-
-      font-size: 16pt;
-    }
-
-    .container {
-      display: inline-block;
-      width: 500px;
-
-      padding: 50px;
-      margin: 10px 0;
-
-      border: 1px solid #ffffff;
-      border-radius: 6px;
-
-      box-shadow: 0 0 6px 0 #000000;
-    }
-
-    .fileupload {
-      padding: 10px;
-      margin-top: 10px;
-
-      border: 1px solid #ffffff;
-      border-radius: 6px;
-
-      box-shadow: 0 0 6px 0 #000000;
-    }
-
-    label {
-      font-size: 14pt;
-    }
-
-    input[type="text"] {
-      width: 300px;
-
-      padding: 10px 5px;
-      margin: 10px 0;
-
-      border: none;
-      border-radius: 6px;
-
-      box-shadow: 0 0 6px 0 #000000;
-
-      text-align: center;
-    }
-
-    textarea:focus,
-    input:focus {
-      outline: none;
-    }
-
-    input[type="button"] {
-      width: 200px;
-
-      padding: 5px 0;
-      margin: 10px 0;
-
-      border: 1px solid #ffffff;
-      border-radius: 6px;
-
-      background-color: #ffffff;
-      color: #242424;
-
-      box-shadow: 0 0 6px 0 #000000;
-    }
-
-    input[type="button"]:hover {
-      cursor: pointer;
-
-      background-color: #242424;
-      color: #ffffff;
-    }
-  </style>
-  <script>
-    async function getQuotesNeDB(e) {
-      e.preventDefault();
-      document.getElementById('quotesbutton').disabled = true;
-
-      const streamer = document.getElementById('streamer').value;
-      const inputFile = document.getElementById('quotelist').files[0];
-
-      const formData = new FormData();
-      formData.append('streamer', streamer);
-      formData.append('quotelist', inputFile);
-
-      try {
-        const result = await fetch('/api/quotes/xlsx', {
-          method: 'POST',
-          body: formData
-        });
-        const metadata = await result.json();
-
-        setTimeout(() => {
-          window.open(`/api/download/quotes/${metadata.createdDb}`, '_blank');
-        }, 1000);
-      } catch (e) {
-        console.log(e);
-      } finally {
-        document.getElementById('quotesbutton').disabled = false;
-      }
-    }
-
-    async function getUsersNeDB(e) {
-      e.preventDefault();
-      document.getElementById('usersbutton').disabled = true;
-
-      const currencyId = document.getElementById('currencyId').value;
-      const inputFile = document.getElementById('userlist').files[0];
-
-      const formData = new FormData();
-      formData.append('currencyId', currencyId);
-      formData.append('userlist', inputFile);
-
-      try {
-        const result = await fetch('/api/users/xlsx', {
-          method: 'POST',
-          body: formData
-        });
-        const metadata = await result.json();
-
-        setTimeout(() => {
-          window.open(`/api/download/users/${metadata.createdDb}`, '_blank');
-        }, 1000);
-      } catch (e) {
-        console.log(e);
-      } finally {
-        document.getElementById('usersbutton').disabled = false;
-      }
-    }
-  </script>
+  <title>StreamLabs to Firebot</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="text/javascript" src="functions.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
 </head>
 
 <body>
-  <h2>XLSX to NeDB Migration</h2>
-
+  <h2>StreamLabs Chatbot XLSX -> Firebot NeDB</h2>
   <div class="container">
-    <h4>Quote Migration</h4>
-    <div>
-      <label>Your twitch username</label>
+    <div class="how-to">
+      <h4>How to migrate Quotes from StreamLabs</h4>
+      To export quotes from StreamLabs Chatbot (Desktop):
+      <br/>
+      <div class="code">Connections (the person icon) > Cloud > Create/Export split excel files</div>
+      <br/>
+      They will go to the local "cloud" folder 
+      <br /><br />
+      Expected quote format:
       <br />
-      <input 
-        type="text" 
-        id="streamer" 
-        name="streamer" 
-        placeholder="GeeScot" 
-        onblur="this.placeholder = 'GeeScot'"
-        onfocus="this.placeholder = ''" />
-    </div>
-    <div>
-      <label>Your quotes file (xlsx)</label>
+      <div class="code">Totally not out of context quote [Game] [dd/mm/yyyy]</div>
       <br />
-      <input type="file" id="quotelist" name="quotelist" class="fileupload" />
+      Supported date formats:
+      <br />
+      <div class="code">
+        <div>[ddmmyyyy]</div>
+        <div>[dd-mm-yyy]</div>
+        <div>[dd/mm/yyyy]</div>
+        <div>[dd.mm.yyyy]</div>
+      </div>
     </div>
-    <input id="quotesbutton" type="button" value="Migrate Quotes" onclick="getQuotesNeDB(event)" />
+
+    <div class="migration-form">
+      <h4>Quote Migration</h4>
+      <div>
+        <label>Your twitch username</label>
+      </div>
+      <div>
+        <input 
+          type="text" 
+          id="streamer" 
+          name="streamer" 
+          placeholder="GeeScot" 
+          onblur="this.placeholder = 'GeeScot'"
+          onfocus="this.placeholder = ''" />
+      </div>
+      <div>
+        <label for="quotelist">Your quotes file (xlsx)</label>
+      </div>
+      <div class="file-upload">
+        <input type="file" id="quotelist" name="quotelist" />
+      </div>
+      <input id="quotesbutton" type="button" value="Migrate Quotes" onclick="getQuotesNeDB(event)" />
+    </div>
   </div>
   <div class="container">
-    <h4>User Migration</h4>
-    <div>
-      <label>Your currency id</label>
+    <div class="how-to">
+      <h4>How to migrate Users from StreamLabs</h4>
+      If you want to migrate user points/hours that are in a points.xlsx file from the StreamLabs Chatbot backups (use the steps above for Quotes migration to get the users/points xlsx file).
+      <br /><br />
+      It has to be in the format Name, Rank, Points, Hours. The Rank will be ignored in the migration.
+      <img alt="xlsx users format" src="https://cdn.discordapp.com/attachments/720225308707651625/827262394707345408/Capture.PNG" width="400" />
+      <br /><br />
+      You'll need to set up a currency first and then grab the currency id from the currency.json file in:
       <br />
-      <input 
-        type="text" 
-        id="currencyId" 
-        name="currencyId" 
-        placeholder="00000000-0000-0000-0000-000000000000"
-        onblur="this.placeholder = '00000000-0000-0000-0000-000000000000'"
-        onfocus="this.placeholder = ''" />
-    </div>
-    <div>
-      <label>Your users/points file (xlsx)</label>
+      <div class="code">%appdata%\Firebot\v5\profiles\Main Profile\currency</div>
       <br />
-      <input type="file" id="userlist" name="userlist" class="fileupload" />
+      <img alt="xlsx users format" src="https://cdn.discordapp.com/attachments/720225308707651625/827262402823061544/Capture-2.PNG" width="400" />
     </div>
-    <input id="usersbutton" type="button" value="Migrate Users" onclick="getUsersNeDB(event)" />
+
+    <div class="migration-form">
+      <h4>User Migration</h4>
+      <div>
+        <label for="currencyId">Your currency id</label>
+      </div>
+      <div>
+        <input 
+          type="text" 
+          id="currencyId" 
+          name="currencyId" 
+          placeholder="00000000-0000-0000-0000-000000000000"
+          onblur="this.placeholder = '00000000-0000-0000-0000-000000000000'"
+          onfocus="this.placeholder = ''" />
+      </div>
+      <div>
+        <label for="userlist">Your users/points file (xlsx)</label>
+      </div>
+      <div class="file-upload">
+        <input type="file" id="userlist" name="userlist" />
+      </div>
+      <input id="usersbutton" type="button" value="Migrate Users" onclick="getUsersNeDB(event)" />
+    </div>
   </div>
 </body>
 
