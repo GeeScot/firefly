@@ -8,6 +8,7 @@ const { v4 } = require('uuid');
 const multer = require('multer');
 const xlsx = require('node-xlsx').default;
 const axios = require('axios');
+const fs = require('fs');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -22,7 +23,16 @@ app.use(express.static('public'));
 app.get('/api/download/:outputName/:targetDb', async (req, res) => {
   const outputName = req.params['outputName'];
   const targetDb = req.params['targetDb'];
-  res.download(`temp/${targetDb}.db`, `${outputName}.db`);
+  
+  res.download(`temp/${targetDb}.db`, `${outputName}.db`, function(err) {
+    fs.unlink(`temp/${targetDb}.db`, (err) => {
+      if (err) {
+        throw err;
+      }
+
+      console.log(`temp/${targetDb}.db was deleted`);
+    });
+  });
 });
 
 app.post('/api/quotes/xlsx', upload.single('quotelist'), (req, res) => {
