@@ -2,6 +2,9 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const express = require('express');
+const minify = require('express-minify');
+const compression = require('compression');
+
 const { parse, isValid } = require('date-fns');
 const Datastore = require('nedb');
 const { v4 } = require('uuid');
@@ -18,6 +21,9 @@ const port = process.env.PORT || 3000;
 
 app.use(express.text());
 app.use(express.json());
+
+app.use(compression());
+app.use(minify());
 app.use(express.static('public'));
 
 app.get('/api/download/:outputName/:targetDb', async (req, res) => {
