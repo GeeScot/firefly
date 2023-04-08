@@ -4,6 +4,7 @@ dotenv.config();
 const express = require('express');
 const minify = require('express-minify');
 const compression = require('compression');
+const { createClient } = require('redis');
 
 const { parse, isValid } = require('date-fns');
 const Datastore = require('nedb');
@@ -12,9 +13,14 @@ const multer = require('multer');
 const xlsx = require('node-xlsx').default;
 const axios = require('axios');
 const fs = require('fs');
+const { Mutex } = require('async-mutex');
+
+const cache = createClient();
+cache.connect();
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+const mutex = new Mutex();
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -161,43 +167,63 @@ async function createUsersDb(currencyId, rows) {
 
   const chunkSize = 100;
   const allUsers = rows.map(row => row[0]);
-  let twitchUsers = [];
 
   for (let i = 0; i < allUsers.length; i += chunkSize) {
+    console.log(`Chunk ${i}-${i+chunkSize}`);
     let nextChunk = i + chunkSize;
     if (nextChunk > allUsers.length) {
       nextChunk = allUsers.length;
     }
 
     const batchUsers = allUsers.slice(i, nextChunk);
-    const users = await getTwitchUsers(batchUsers);
-    twitchUsers = twitchUsers.concat(users);
+    const trimmedBatchUsers = [];
+    for (const user of batchUsers) {
+      if (user?.toLowerCase) {
+        const existingUser = await cache.get(user.toLowerCase());
+        if (!existingUser) {
+          trimmedBatchUsers.push(user);
+        }
+      }
+    }
+
+    const users = await getTwitchUsers(trimmedBatchUsers);
+    for (const user of users) {
+      if (user?.login) {
+        await cache.set(user.login.toLowerCase(), JSON.stringify(user));
+      } else {
+        console.log(user);
+      }
+    }
   }
 
   const inactiveUsers = [];
 
-  rows.forEach((row) => {
+  for (const row of rows) {
     const username = row[0];
     const points = row[2];
     const hours = row[3];
 
-    const twitchUser = twitchUsers.find((user) => user?.login === username.toLowerCase());
-    if (!twitchUser) {
+    const cachedUser = await cache.get(`${username}`.toLowerCase());
+    if (!cachedUser) {
+      console.log(`Couldn't find ${username}`);
       inactiveUsers.push(username);
-      return;
+      continue;
     }
 
-    db.insert({
+    const twitchUser = JSON.parse(cachedUser);
+    const lastSeenDate = Date.parse(twitchUser.created_at); // set to the account creation date since we don't really know.
+
+    const firebotUser = {
       _id: twitchUser.id,
       username: username.toLowerCase(),
-      displayName: username,
+      displayName: twitchUser.display_name,
       profilePicUrl: twitchUser.profile_image_url,
       twitch: true,
       twitchRoles: [],
       online: false,
-      onlineAt: 1617199157240,
-      lastSeen: 1617199157240,
-      joinDate: 1617199157240,
+      onlineAt: lastSeenDate,
+      lastSeen: lastSeenDate,
+      joinDate: lastSeenDate,
       minutesInChannel: hours * 60,
       chatMessages: 0,
       disableAutoStatAccrual: false,
@@ -206,15 +232,26 @@ async function createUsersDb(currencyId, rows) {
       currency: {
         [currencyId]: points
       }
-    });
-  });
+    };
+
+    await mutex.waitForUnlock();
+    const release = await mutex.acquire();
+
+    try {
+      db.insert(firebotUser);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      release();
+    }
+  }
 
   db.persistence.compactDatafile();
 
   const result = {
     createdDb: tempDb,
     totalUsersCount: allUsers.length,
-    activeUsersCount: twitchUsers.length,
+    activeUsersCount: db.length,
     inactiveUsers: inactiveUsers.sort()
   };
 
@@ -229,14 +266,27 @@ async function createUsersDb(currencyId, rows) {
 
 async function getTwitchUsers(channels) {
   try {
-    const params = channels.map(c => `login=${c}`);
+    const params = channels.map(c => `login=${encodeURIComponent(c)}`);
     const targetUrl = `https://api.twitch.tv/helix/users?${params.join('&')}`;
     return await getFromTwitch(targetUrl);
   } catch (e) {
-    console.log(e);
+    return await getActiveUsers(channels);
+  }
+}
+
+async function getActiveUsers(channels) {
+  const activeUsers = [];
+  for (const channel of channels) {
+    const singleUserUrl = `https://api.twitch.tv/helix/users?login=${encodeURIComponent(channel)}`;
+    try {
+      const data = await getFromTwitch(singleUserUrl);
+      activeUsers.push(...data);
+    } catch (e) {
+      console.log(`Unknown User ${channel}`);
+    }
   }
 
-  return null;
+  return activeUsers;
 }
 
 async function getFromTwitch(targetUrl) {
@@ -255,7 +305,7 @@ async function getTwitchToken() {
   const targetUrl = `https://id.twitch.tv/oauth2/token`;
   const { data } = await axios.post(targetUrl, {
     'client_id': process.env.TWITCH_CLIENT_ID,
-    'cient_secret': process.env.TWITCH_CLIENT_SECRET,
+    'client_secret': process.env.TWITCH_CLIENT_SECRET,
     'grant_type': 'client_credentials'
   });
 
